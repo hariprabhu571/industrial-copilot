@@ -2,6 +2,9 @@ import { query } from "../db/postgres.js";
 import { v4 as uuidv4 } from "uuid";
 
 function toPgVector(vec) {
+  if (!vec || !Array.isArray(vec)) {
+    throw new Error(`Invalid vector: expected array, got ${typeof vec}`);
+  }
   return `[${vec.join(",")}]`;
 }
 
@@ -42,28 +45,46 @@ export async function saveDocument({
 export async function saveChunksWithEmbeddings(
   documentId,
   chunks,
-  embeddings
+  embeddingsWithProviders
 ) {
   for (let i = 0; i < chunks.length; i++) {
     const chunkId = uuidv4();
+    const chunk = chunks[i];
+    const embeddingData = embeddingsWithProviders[i];
 
+    // Save chunk with metadata
     await query(
-      `INSERT INTO chunks (id, document_id, chunk_index, content, section)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO chunks (id, document_id, chunk_index, content, section, pii_masked)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         chunkId,
         documentId,
         i,
-        chunks[i].content,
-        chunks[i].section || "general",
+        chunk.content,
+        chunk.section || "general",
+        chunk.metadata?.pii_masked || false,
       ]
     );
 
-    await query(
-      `INSERT INTO embeddings (chunk_id, embedding)
-       VALUES ($1, $2::vector)`,
-      [chunkId, toPgVector(embeddings[i])]
-    );
+    const vector = toPgVector(embeddingData.embedding);
+    const provider = embeddingData.provider;
+
+    console.log(`Processing chunk ${i}: provider=${provider}, embedding_length=${embeddingData.embedding?.length}`);
+
+    if (provider === "cloud") {
+      await query(
+        `INSERT INTO embeddings (chunk_id, embedding_cloud)
+         VALUES ($1, $2::vector)`,
+        [chunkId, vector]
+      );
+    } else {
+      await query(
+        `INSERT INTO embeddings (chunk_id, embedding_local)
+         VALUES ($1, $2::vector)`,
+        [chunkId, vector]
+      );
+    }
+    
   }
 }
 
@@ -71,14 +92,19 @@ export async function saveChunksWithEmbeddings(
 export async function similaritySearch(
   queryEmbedding,
   k = 4,
-  sectionWeights = { general: 0.05 }
+  sectionWeights = { general: 0.05 },
+  queryProvider = 'cloud'
 ) {
+  // Search only the matching embedding type to avoid dimension mismatch
+  const embeddingColumn = queryProvider === 'cloud' ? 'embedding_cloud' : 'embedding_local';
+  
   const res = await query(
     `
     SELECT
     c.content,
     c.chunk_index,
     c.section,
+    c.pii_masked,
 
     d.id AS document_id,
     d.name AS document_name,
@@ -87,20 +113,21 @@ export async function similaritySearch(
     d.version,
     d.status,
 
-    -- base semantic similarity
-    1 - (e.embedding <=> $1::vector) AS similarity,
+    -- base semantic similarity using the correct embedding column
+    1 - (e.${embeddingColumn} <=> $1::vector) AS similarity,
 
     -- section-based bonus (from JSON)
     COALESCE(($3::jsonb ->> c.section)::float, 0) AS section_bonus,
 
     -- final weighted score
-    (1 - (e.embedding <=> $1::vector)) +
+    (1 - (e.${embeddingColumn} <=> $1::vector)) +
     COALESCE(($3::jsonb ->> c.section)::float, 0) AS score
 
 
     FROM embeddings e
     JOIN chunks c ON c.id = e.chunk_id
     JOIN documents d ON d.id = c.document_id
+    WHERE e.${embeddingColumn} IS NOT NULL
     ORDER BY score DESC
     LIMIT $2
     `,
@@ -123,6 +150,7 @@ return res.rows.map(row => ({
     status: row.status,
     chunkIndex: row.chunk_index,
     section: row.section,
+    piiMasked: row.pii_masked,
     source: "uploaded-pdf",
   },
 }));

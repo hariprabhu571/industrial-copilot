@@ -1,5 +1,5 @@
 import express from "express";
-import { embedQuery } from "../rag/embeddings.js";
+import { embedQuery, embedQuerySmart } from "../rag/embeddings.js";
 import { similaritySearch } from "../rag/vectorStore.postgres.js";
 import { generateAnswer } from "../rag/chatCompletion.js";
 import { detectSectionWeights } from "../rag/questionSectionDetector.js";
@@ -27,15 +27,15 @@ const sectionWeights = detectSectionWeights(question);
 console.log("Section weights:", sectionWeights);
 
 
-    // 2️⃣ Embed query
-    const queryEmbedding = await embedQuery(question);
+    // 2️⃣ Embed query using smart routing
+    const queryEmbedding = await embedQuerySmart(question);
 
     // 3️⃣ Vector similarity search WITH section bias
-
 const results = await similaritySearch(
   queryEmbedding,
   4,
-  sectionWeights
+  sectionWeights,
+  'cloud' // Query uses cloud embedding (Gemini)
 );
 
 // 🚫 Not enough results

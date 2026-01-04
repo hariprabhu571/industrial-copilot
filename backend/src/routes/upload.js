@@ -9,7 +9,8 @@ import {
   saveChunksWithEmbeddings
 } from "../rag/vectorStore.postgres.js";
 
-
+import { preprocessText } from "../nlp/preprocessText.js";
+import { embedChunks } from "../rag/embeddingRouter.js";
 
 
 const router = express.Router();
@@ -58,12 +59,51 @@ router.post(
       }
 
       // 2️⃣ Chunk text
-      const chunks = chunkText(fullText);
+      // 2️⃣ Phase 15.1 – Local NLP preprocessing (SECURITY LAYER)
+      const preprocessedChunks = await preprocessText(fullText);
+
+      console.log(
+        "Phase 15.2 sample:",
+        preprocessedChunks.slice(0, 3)
+      );
+
+/*
+preprocessedChunks structure (example):
+[
+  { content: "Sanitized sentence...", section: "policy" },
+  { content: "Another safe sentence...", section: "procedure" }
+]
+*/
+
+// Convert back to text for chunking (no PII now)
+const cleanText = preprocessedChunks
+  .map(p => p.content)
+  .join("\n");
+
+// 3️⃣ Chunk text (existing logic, unchanged)
+const chunks = chunkText(cleanText);
+
+// 4️⃣ Preserve metadata from preprocessing - map PII flags to chunks
+// We need to map the preprocessed metadata to the chunks
+const chunksWithMetadata = chunks.map((chunk, index) => {
+  // Find which preprocessed chunks contributed to this chunk
+  // For simplicity, we'll mark a chunk as PII-masked if any of its content came from PII-masked preprocessing
+  const hasPiiContent = preprocessedChunks.some(p => 
+    p.pii_masked && chunk.content.includes(p.content.substring(0, 50))
+  );
+  
+  return {
+    ...chunk,
+    metadata: {
+      pii_masked: hasPiiContent,
+      chunk_index: index
+    }
+  };
+});
+
 
       // 3️⃣ Embed chunks (Gemini)
-      const embeddings = await embedTexts(
-    chunks.map(chunk => chunk.content)
-  );
+      const embeddingsWithProviders = await embedChunks(chunksWithMetadata);
 
 
   // 4️⃣ Save document metadata (enterprise-aware)
@@ -89,15 +129,15 @@ router.post(
       // 5️⃣ Save chunks + embeddings (Postgres)
       await saveChunksWithEmbeddings(
         documentId,
-        chunks,
-        embeddings
+        chunksWithMetadata,
+        embeddingsWithProviders
       );
 
       // 6️⃣ Response
       res.json({
         documentId,
         characters: fullText.length,
-        chunks: chunks.length,
+        chunks: chunksWithMetadata.length,
         message: "Document parsed, chunked, embedded, and stored persistently",
       });
 
