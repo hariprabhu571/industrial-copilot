@@ -7,9 +7,9 @@ import { saveAuditLog } from "../db/auditLogs.js";
 
 
 
-const MIN_RESULTS = 2;
-const MIN_SCORE = 0.55;
-const MIN_CONTEXT_CHARS = 300;
+const MIN_RESULTS = 1;
+const MIN_SCORE = 0.3;
+const MIN_CONTEXT_CHARS = 100;
 
 
 const router = express.Router();

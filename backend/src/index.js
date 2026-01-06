@@ -5,6 +5,7 @@ import cors from "cors";
 
 import uploadRoute from "./routes/upload.js";
 import chatRoute from "./routes/chat.js";
+import authRoute from "./routes/auth.js";
 import { authenticate } from "./auth/authMiddleware.js";
 import { authorize } from "./auth/authorize.js";
 import auditRoute from "./routes/audit.js";
@@ -19,29 +20,31 @@ app.use(express.json());
 
 
 /* ✅ Routes AFTER middleware */
+app.use("/api/auth", authRoute);
+
 app.use(
-  "/upload",
+  "/api/upload",
   authenticate,
   authorize(["admin", "editor"]),
   uploadRoute
 );
 
 app.use(
-  "/chat",
+  "/api/chat",
   authenticate,
   authorize(["admin", "editor", "viewer"]),
   chatRoute
 );
 
 app.use(
-  "/audit",
+  "/api/audit",
   authenticate,
   authorize(["admin"]),
   auditRoute
 );
 
 
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ status: "Industrial AI Copilot backend running" });
 });
 
