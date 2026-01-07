@@ -1,0 +1,530 @@
+{
+  "info": {
+    "name": "Phase 29 - Equipment Management API",
+    "description": "Complete API collection for Industrial AI Copilot Equipment Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.token) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.token);",
+                  "        console.log('Token saved:', response.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Plant Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.token) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"plant.manager\",\n  \"password\": \"manager123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Technician",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.token) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"tech.senior\",\n  \"password\": \"tech123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Operator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.token) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"operator.line1\",\n  \"password\": \"operator123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipment Search & List",
+      "item": [
+        {
+          "name": "Get All Equipment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment",
+              "host": ["{{base_url}}"],
+              "path": ["equipment"]
+            }
+          }
+        },
+        {
+          "name": "Search Equipment by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment?name=pump",
+              "host": ["{{base_url}}"],
+              "path": ["equipment"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "pump"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Plant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment?plant=PLANT-A",
+              "host": ["{{base_url}}"],
+              "path": ["equipment"],
+              "query": [
+                {
+                  "key": "plant",
+                  "value": "PLANT-A"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Operational State",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment?operationalState=OPERATIONAL&limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["equipment"],
+              "query": [
+                {
+                  "key": "operationalState",
+                  "value": "OPERATIONAL"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Criticality",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment?criticality=CRITICAL",
+              "host": ["{{base_url}}"],
+              "path": ["equipment"],
+              "query": [
+                {
+                  "key": "criticality",
+                  "value": "CRITICAL"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipment Details",
+      "item": [
+        {
+          "name": "Get Pump Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001"]
+            }
+          }
+        },
+        {
+          "name": "Get Conveyor Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-CNV-001",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-CNV-001"]
+            }
+          }
+        },
+        {
+          "name": "Get PLC Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PLC-001",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PLC-001"]
+            }
+          }
+        },
+        {
+          "name": "Get Reactor Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-RCT-001",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-RCT-001"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipment Status & Monitoring",
+      "item": [
+        {
+          "name": "Get Equipment Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001/status",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get Equipment Alarms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001/alarms",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001", "alarms"]
+            }
+          }
+        },
+        {
+          "name": "Get All Alarms (Active + Resolved)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001/alarms?activeOnly=false",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001", "alarms"],
+              "query": [
+                {
+                  "key": "activeOnly",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Equipment Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "statistics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Maintenance History",
+      "item": [
+        {
+          "name": "Get Maintenance History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001/maintenance",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001", "maintenance"]
+            }
+          }
+        },
+        {
+          "name": "Get Completed Maintenance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001/maintenance?status=COMPLETED&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001", "maintenance"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "COMPLETED"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Scheduled Maintenance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/EQ-PMP-001/maintenance?status=SCHEDULED",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "EQ-PMP-001", "maintenance"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "SCHEDULED"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Location-Based Access",
+      "item": [
+        {
+          "name": "Get Equipment by Plant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/location/PLANT-A",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "location", "PLANT-A"]
+            }
+          }
+        },
+        {
+          "name": "Get Equipment by Plant & Area",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/location/PLANT-A/PRODUCTION",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "location", "PLANT-A", "PRODUCTION"]
+            }
+          }
+        },
+        {
+          "name": "Get Equipment by Plant, Area & Line",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/location/PLANT-A/PRODUCTION/LINE-1",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "location", "PLANT-A", "PRODUCTION", "LINE-1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories & Locations",
+      "item": [
+        {
+          "name": "Get Equipment Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/categories",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Get Equipment Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/locations",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "locations"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "System Health (Admin Only)",
+      "item": [
+        {
+          "name": "Get Adapter Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/equipment/health",
+              "host": ["{{base_url}}"],
+              "path": ["equipment", "health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

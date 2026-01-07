@@ -98,6 +98,76 @@ async function setupDatabase() {
       console.log(`   ❌ Vector operations failed: ${error.message}`);
     }
     
+    console.log("\n🏭 Setting up Equipment Management System (Phase 29)...");
+    
+    // Apply Equipment Management Schema
+    const equipmentSchemaPath = join(__dirname, 'sql', 'equipment-schema.sql');
+    try {
+      const equipmentSchemaSQL = readFileSync(equipmentSchemaPath, 'utf8');
+      
+      // Split and execute equipment schema statements
+      const equipmentStatements = equipmentSchemaSQL
+        .split(';')
+        .map(stmt => stmt.trim())
+        .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      
+      for (const statement of equipmentStatements) {
+        try {
+          await query(statement);
+        } catch (error) {
+          // Ignore "already exists" errors
+          if (!error.message.includes('already exists') && !error.message.includes('duplicate')) {
+            console.log(`   ⚠️  Warning: ${error.message}`);
+          }
+        }
+      }
+      
+      console.log("   ✅ Equipment Management schema created");
+    } catch (error) {
+      console.log(`   ❌ Equipment schema setup failed: ${error.message}`);
+    }
+    
+    // Load Equipment Sample Data
+    const equipmentDataPath = join(__dirname, 'sql', 'equipment-sample-data.sql');
+    try {
+      const equipmentDataSQL = readFileSync(equipmentDataPath, 'utf8');
+      
+      // Split and execute equipment data statements
+      const dataStatements = equipmentDataSQL
+        .split(';')
+        .map(stmt => stmt.trim())
+        .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      
+      for (const statement of dataStatements) {
+        try {
+          await query(statement);
+        } catch (error) {
+          // Ignore duplicate key errors for sample data
+          if (!error.message.includes('duplicate key') && !error.message.includes('already exists')) {
+            console.log(`   ⚠️  Warning: ${error.message}`);
+          }
+        }
+      }
+      
+      console.log("   ✅ Equipment sample data loaded");
+    } catch (error) {
+      console.log(`   ❌ Equipment data loading failed: ${error.message}`);
+    }
+    
+    // Verify Equipment Management Setup
+    console.log("\n7️⃣ Verifying Equipment Management...");
+    try {
+      const equipmentCount = await query('SELECT COUNT(*) FROM equipment');
+      const userCount = await query('SELECT COUNT(*) FROM users WHERE equipment_role IS NOT NULL');
+      const maintenanceCount = await query('SELECT COUNT(*) FROM maintenance_records');
+      
+      console.log(`   ✅ Equipment Records: ${equipmentCount.rows[0].count}`);
+      console.log(`   ✅ Users with Equipment Roles: ${userCount.rows[0].count}`);
+      console.log(`   ✅ Maintenance Records: ${maintenanceCount.rows[0].count}`);
+    } catch (error) {
+      console.log(`   ❌ Equipment verification failed: ${error.message}`);
+    }
+    
     console.log("\n🎉 Database setup complete!");
     console.log("\n📋 Summary:");
     console.log("   ✅ PostgreSQL connected");
@@ -105,12 +175,14 @@ async function setupDatabase() {
     console.log("   ✅ All tables created");
     console.log("   ✅ Performance indexes created");
     console.log("   ✅ Vector operations verified");
+    console.log("   ✅ Equipment Management System ready");
     
     console.log("\n🚀 Ready for testing!");
     console.log("   Next steps:");
     console.log("   1. Start the backend: npm start");
     console.log("   2. Run system tests: node test-complete-system.js");
     console.log("   3. Run API tests: node test-api-endpoints.js");
+    console.log("   4. Test equipment management: Access /api/equipment endpoints");
     
     return true;
     

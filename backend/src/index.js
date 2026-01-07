@@ -6,6 +6,7 @@ import cors from "cors";
 import uploadRoute from "./routes/upload.js";
 import chatRoute from "./routes/chat.js";
 import authRoute from "./routes/auth.js";
+import equipmentRoute from "./routes/equipment.js";
 import { authenticate } from "./auth/authMiddleware.js";
 import { authorize } from "./auth/authorize.js";
 import auditRoute from "./routes/audit.js";
@@ -21,6 +22,13 @@ app.use(express.json());
 
 /* ✅ Routes AFTER middleware */
 app.use("/api/auth", authRoute);
+
+app.use(
+  "/api/equipment",
+  authenticate,
+  authorize(["admin", "editor", "viewer"]),
+  equipmentRoute
+);
 
 app.use(
   "/api/upload",

@@ -1,29 +1,9 @@
 import express from "express";
+import bcrypt from "bcrypt";
 import { signToken } from "../auth/jwt.js";
+import { query } from "../db/postgres.js";
 
 const router = express.Router();
-
-// Mock users for demo (in production, this would be from database)
-const users = {
-  admin: {
-    userId: "1",
-    email: "admin@company.com",
-    role: "admin",
-    password: "admin123", // In production, this would be hashed
-  },
-  editor: {
-    userId: "2", 
-    email: "editor@company.com",
-    role: "editor",
-    password: "editor123",
-  },
-  viewer: {
-    userId: "3",
-    email: "viewer@company.com", 
-    role: "viewer",
-    password: "viewer123",
-  },
-};
 
 /**
  * POST /auth/login
@@ -39,17 +19,38 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const user = users[username.toLowerCase()];
-    
-    if (!user || user.password !== password) {
+    // Get user from database
+    const userResult = await query(
+      "SELECT id, username, email, password_hash, role, equipment_role, department FROM users WHERE username = $1",
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
       return res.status(401).json({
         error: "Invalid credentials",
       });
     }
 
+    const user = userResult.rows[0];
+
+    // Check password
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({
+        error: "Invalid credentials",
+      });
+    }
+
+    // Update last login
+    await query(
+      "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+      [user.id]
+    );
+
     // Generate JWT token
     const token = signToken({
-      userId: user.userId,
+      userId: user.id,
       email: user.email,
       role: user.role,
     });
@@ -58,10 +59,12 @@ router.post("/login", async (req, res) => {
       success: true,
       data: {
         user: {
-          id: user.userId,
-          username: username.toLowerCase(),
+          id: user.id,
+          username: user.username,
           email: user.email,
           role: user.role,
+          equipmentRole: user.equipment_role,
+          department: user.department,
           createdAt: new Date().toISOString(),
         },
         token,
