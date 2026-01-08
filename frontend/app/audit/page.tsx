@@ -18,7 +18,7 @@ export default function AuditPage() {
   useEffect(() => {
     if (user && !hasPermission(user.role, "audit")) {
       router.push("/dashboard")
-    } else if (!hasPermission(user.role, "audit")) {
+    } else if (user && !hasPermission(user.role, "audit")) {
       router.push("/dashboard")
     }
   }, [user, router])

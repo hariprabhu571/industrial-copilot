@@ -186,7 +186,7 @@ export default function UsersPage() {
                         <SelectItem value="editor">
                           <div className="flex items-center gap-2">
                             <Edit className="size-4" />
-                            Editor - Can upload documents
+                            Editor - View and chat only
                           </div>
                         </SelectItem>
                         <SelectItem value="admin">
@@ -298,7 +298,6 @@ export default function UsersPage() {
                     <h4 className="font-semibold">Editor</h4>
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1 ml-7">
-                    <li>• Upload documents</li>
                     <li>• View documents</li>
                     <li>• Chat with AI</li>
                   </ul>

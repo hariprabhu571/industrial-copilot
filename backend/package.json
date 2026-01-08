@@ -7,7 +7,15 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "setup-db": "node setup-database.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/run-tests.js",
+    "test:unit": "node tests/run-tests.js --category unit",
+    "test:integration": "node tests/run-tests.js --category integration",
+    "test:system": "node tests/run-tests.js --category system",
+    "test:setup": "node tests/run-tests.js --category setup",
+    "test:all": "node tests/system/test-all-systems.js",
+    "test:complete": "node tests/system/test-complete-system.js",
+    "test:equipment": "node tests/integration/test-day2-equipment-api.js",
+    "test:db": "node tests/unit/test-db-connection.js"
   },
   "keywords": [],
   "author": "",

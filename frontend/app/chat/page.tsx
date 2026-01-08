@@ -23,7 +23,8 @@ export default function ChatPage() {
     createConversation, 
     activeConversationId, 
     setActiveConversation,
-    updateConversationTitle 
+    updateConversationTitle,
+    conversations
   } = useChatStore()
   const { documents } = useDocumentStore()
   const { addLog } = useAuditStore()
@@ -39,6 +40,16 @@ export default function ChatPage() {
       router.push("/dashboard")
     }
   }, [user, router])
+
+  // Handle user switching - clear active conversation if it doesn't belong to current user
+  useEffect(() => {
+    if (user && activeConversationId) {
+      const activeConv = conversations.find(c => c.id === activeConversationId)
+      if (activeConv && activeConv.userId !== user.id) {
+        setActiveConversation(null)
+      }
+    }
+  }, [user, activeConversationId, conversations, setActiveConversation])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })

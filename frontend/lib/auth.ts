@@ -75,9 +75,9 @@ export async function authenticate(username: string, password: string): Promise<
 
 export function hasPermission(role: UserRole, action: string): boolean {
   const permissions: Record<UserRole, string[]> = {
-    admin: ["view", "upload", "delete", "audit", "chat"],
-    editor: ["view", "upload", "chat"],
-    viewer: ["view", "chat"],
+    admin: ["view", "upload", "delete", "audit", "chat", "documents"],
+    editor: ["view", "chat", "documents"], // Removed "upload" - only admins can upload
+    viewer: ["view", "chat", "documents"],
   }
   return permissions[role].includes(action)
 }

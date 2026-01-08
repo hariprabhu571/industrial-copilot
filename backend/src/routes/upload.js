@@ -3,7 +3,6 @@ import multer from "multer";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { chunkText } from "../rag/chunkText.js";
-import { embedTexts } from "../rag/embeddings.js";
 import {
   saveDocument,
   saveChunksWithEmbeddings
@@ -11,18 +10,39 @@ import {
 
 import { preprocessText } from "../nlp/preprocessText.js";
 import { embedChunks } from "../rag/embeddingRouter.js";
+import { authenticate } from "../auth/authMiddleware.js";
 
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 
-function requireAdmin(req, res, next) {
+// Updated function to require admin role via JWT
+function requireAdminRole(req, res, next) {
+  // Check if user is authenticated (should be done by authenticate middleware)
+  if (!req.user) {
+    return res.status(401).json({
+      error: "Authentication required",
+    });
+  }
+
+  // Check if user has admin role
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      error: "Admin role required to upload documents. Only administrators can upload documents.",
+    });
+  }
+
+  next();
+}
+
+// Legacy admin key support for backward compatibility (optional)
+function requireAdminKey(req, res, next) {
   const adminKey = req.headers["x-admin-key"];
 
   if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
     return res.status(403).json({
-      error: "Admin privileges required to upload documents",
+      error: "Admin API key required for upload",
     });
   }
 
@@ -32,9 +52,11 @@ function requireAdmin(req, res, next) {
 
 
 
+// Primary route: JWT-based authentication (admin role required)
 router.post(
   "/",
-  requireAdmin,
+  authenticate,
+  requireAdminRole,
   upload.single("file"),
   async (req, res) => {
 
@@ -43,19 +65,25 @@ router.post(
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      // 1️⃣ Parse PDF
-      const loadingTask = pdfjsLib.getDocument({
-        data: new Uint8Array(req.file.buffer),
-      });
-
-      const pdf = await loadingTask.promise;
+      // 1️⃣ Parse PDF or handle text files for testing
       let fullText = "";
+      
+      if (req.file.mimetype === 'application/pdf') {
+        const loadingTask = pdfjsLib.getDocument({
+          data: new Uint8Array(req.file.buffer),
+        });
 
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
-        const strings = content.items.map(item => item.str);
-        fullText += strings.join(" ") + "\n";
+        const pdf = await loadingTask.promise;
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join(" ") + "\n";
+        }
+      } else {
+        // Handle text files for testing
+        fullText = req.file.buffer.toString('utf-8');
       }
 
       // 2️⃣ Chunk text
@@ -112,8 +140,10 @@ const chunksWithMetadata = chunks.map((chunk, index) => {
         doc_type = "general",
         version = "v1.0",
         status = "active",
-        uploaded_by = "system",
       } = req.body;
+
+      // Use authenticated user info
+      const uploaded_by = req.user.username || "system";
 
       const documentId = await saveDocument({
         name: req.file.originalname,
@@ -138,7 +168,99 @@ const chunksWithMetadata = chunks.map((chunk, index) => {
         documentId,
         characters: fullText.length,
         chunks: chunksWithMetadata.length,
+        uploadedBy: uploaded_by,
         message: "Document parsed, chunked, embedded, and stored persistently",
+      });
+
+    } catch (err) {
+      console.error("UPLOAD ERROR:", err);
+      res.status(500).json({ error: err.message });
+    }
+});
+
+// Legacy route: Admin API key support (for backward compatibility and testing)
+router.post(
+  "/legacy",
+  requireAdminKey,
+  upload.single("file"),
+  async (req, res) => {
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // Same processing logic as main route
+      let fullText = "";
+      
+      if (req.file.mimetype === 'application/pdf') {
+        const loadingTask = pdfjsLib.getDocument({
+          data: new Uint8Array(req.file.buffer),
+        });
+
+        const pdf = await loadingTask.promise;
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join(" ") + "\n";
+        }
+      } else {
+        // Handle text files for testing
+        fullText = req.file.buffer.toString('utf-8');
+      }
+
+      const preprocessedChunks = await preprocessText(fullText);
+      const cleanText = preprocessedChunks.map(p => p.content).join("\n");
+      const chunks = chunkText(cleanText);
+
+      const chunksWithMetadata = chunks.map((chunk, index) => {
+        const hasPiiContent = preprocessedChunks.some(p => 
+          p.pii_masked && chunk.content.includes(p.content.substring(0, 50))
+        );
+        
+        return {
+          ...chunk,
+          metadata: {
+            pii_masked: hasPiiContent,
+            chunk_index: index
+          }
+        };
+      });
+
+      const embeddingsWithProviders = await embedChunks(chunksWithMetadata);
+
+      const {
+        department = "general",
+        doc_type = "general",
+        version = "v1.0",
+        status = "active",
+        uploaded_by = "system",
+      } = req.body;
+
+      const documentId = await saveDocument({
+        name: req.file.originalname,
+        source: "uploaded-pdf",
+        department,
+        doc_type,
+        version,
+        status,
+        uploaded_by,
+      });
+
+      await saveChunksWithEmbeddings(
+        documentId,
+        chunksWithMetadata,
+        embeddingsWithProviders
+      );
+
+      res.json({
+        documentId,
+        characters: fullText.length,
+        chunks: chunksWithMetadata.length,
+        uploadedBy: uploaded_by,
+        message: "Document parsed, chunked, embedded, and stored persistently (legacy API key)",
       });
 
     } catch (err) {

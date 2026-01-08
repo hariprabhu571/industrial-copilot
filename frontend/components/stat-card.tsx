@@ -1,9 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react"
+import type { ReactNode } from "react"
 
 interface StatCardProps {
   title: string
-  value: string | number
+  value: string | number | ReactNode
   icon: LucideIcon
   description?: string
   trend?: {
@@ -19,7 +20,7 @@ export function StatCard({ title, value, icon: Icon, description, trend }: StatC
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold text-foreground">{value}</p>
+            <div className="text-3xl font-bold text-foreground">{value}</div>
             {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
           <div className="rounded-lg bg-primary/10 p-3 ring-1 ring-primary/20">

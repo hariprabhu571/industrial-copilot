@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/lib/store"
 import { hasPermission } from "@/lib/auth"
-import { LayoutDashboard, MessageSquare, FileText, Upload, FileSearch, Factory, LogOut, Users } from "lucide-react"
+import { LayoutDashboard, MessageSquare, FileText, Upload, FileSearch, Factory, LogOut, Users, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "view" },
   { name: "Chat", href: "/chat", icon: MessageSquare, permission: "chat" },
+  { name: "Equipment", href: "/equipment", icon: Settings, permission: "view" },
   { name: "Documents", href: "/documents", icon: FileText, permission: "view" },
   { name: "Upload", href: "/upload", icon: Upload, permission: "upload" },
   { name: "Users", href: "/users", icon: Users, permission: "audit" },

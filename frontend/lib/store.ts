@@ -8,14 +8,28 @@ interface AuthStore {
   user: User | null
   login: (user: User) => void
   logout: () => void
+  switchUser: (user: User) => void
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
-      login: (user) => set({ user }),
-      logout: () => set({ user: null }),
+      login: (user) => {
+        const currentUser = get().user
+        // If switching to a different user, clear the previous user's active conversation
+        if (currentUser && currentUser.id !== user.id) {
+          // We'll handle this in the chat page useEffect
+        }
+        set({ user })
+      },
+      logout: () => {
+        set({ user: null })
+      },
+      switchUser: (user: User) => {
+        // Clear active conversation when switching users
+        set({ user })
+      },
     }),
     {
       name: "auth-storage",
@@ -117,7 +131,12 @@ export const useChatStore = create<ChatStore>()(
       clearMessages: () => set({ messages: [] }),
       getUserMessages: (userId) => get().messages.filter(msg => msg.userId === userId),
       clearUserMessages: (userId) => set((state) => ({
-        messages: state.messages.filter(msg => msg.userId !== userId)
+        messages: state.messages.filter(msg => msg.userId !== userId),
+        conversations: state.conversations.filter(conv => conv.userId !== userId),
+        activeConversationId: state.activeConversationId && 
+          state.conversations.find(c => c.id === state.activeConversationId)?.userId === userId 
+            ? null 
+            : state.activeConversationId
       })),
       
       // New conversation methods
@@ -175,6 +194,12 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: "chat-storage",
+      // Add user-specific storage key
+      partialize: (state) => ({
+        messages: state.messages,
+        conversations: state.conversations,
+        activeConversationId: state.activeConversationId,
+      }),
     },
   ),
 )

@@ -8,8 +8,8 @@ import { saveAuditLog } from "../db/auditLogs.js";
 
 
 const MIN_RESULTS = 1;
-const MIN_SCORE = 0.3;
-const MIN_CONTEXT_CHARS = 100;
+const MIN_SCORE = 0.4; // Increased from 0.3 for stricter filtering
+const MIN_CONTEXT_CHARS = 150; // Increased from 100 for better context
 
 
 const router = express.Router();

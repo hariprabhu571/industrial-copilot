@@ -27,6 +27,9 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadComplete, setUploadComplete] = useState(false)
   const [error, setError] = useState("")
+  
+  // Declare progressInterval at component level to avoid scoping issues
+  let progressInterval: NodeJS.Timeout | null = null
 
   useEffect(() => {
     if (user && !hasPermission(user.role, "upload")) {
@@ -82,7 +85,6 @@ export default function UploadPage() {
     // Check if we're in fallback mode (no backend authentication)
     if (user.token === 'fallback-mode') {
       // Simulate upload for fallback mode
-      let progressInterval: NodeJS.Timeout | null = null
       progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
           if (prev >= 100) {
@@ -126,42 +128,57 @@ export default function UploadPage() {
       formData.append('description', description)
       formData.append('userId', user.id)
 
-      // Simulate upload progress
-      let progressInterval: NodeJS.Timeout | null = null
+      // Simulate upload progress with slower increment for large files
+      const fileSize = file.size / (1024 * 1024) // Size in MB
+      const progressSpeed = fileSize > 5 ? 1000 : 500 // Slower progress for larger files
+      
       progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
-          if (prev >= 90) {
-            if (progressInterval) clearInterval(progressInterval)
-            return 90
+          if (prev >= 85) { // Stop at 85% until we get response
+            return 85
           }
-          return prev + 10
+          return prev + 5
         })
-      }, 200)
+      }, progressSpeed)
 
-      // Call the backend API
+      // Call the backend API with longer timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 minute timeout
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`,
-          'x-admin-key': 'super-admin-key-123', // Add the admin key header
         },
         body: formData,
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
       if (progressInterval) clearInterval(progressInterval)
       setUploadProgress(100)
 
       if (!response.ok) {
         const errorText = await response.text()
         console.error('Upload API Error:', response.status, errorText)
-        throw new Error(`Upload failed: ${response.status} - ${errorText}`)
+        
+        // Better error messages for different status codes
+        if (response.status === 413) {
+          throw new Error('File too large. Please select a smaller file.')
+        } else if (response.status === 403) {
+          throw new Error('Permission denied. Only administrators can upload documents.')
+        } else if (response.status === 500) {
+          throw new Error('Server error during processing. Please try again or contact support.')
+        } else {
+          throw new Error(`Upload failed: ${response.status} - ${errorText}`)
+        }
       }
 
       const result = await response.json()
 
       // Add to local store
       addDocument({
-        id: result.id || Date.now().toString(),
+        id: result.documentId || Date.now().toString(),
         name: file.name.replace(".pdf", ""),
         department,
         type: docType,
@@ -175,9 +192,21 @@ export default function UploadPage() {
       setTimeout(() => {
         router.push("/documents")
       }, 1500)
-    } catch (error) {
+    } catch (err) {
+      const error = err as Error
       console.error('Upload error:', error)
       setUploadProgress(0)
+      
+      if (progressInterval) clearInterval(progressInterval)
+      
+      // Handle different error types
+      if (error.name === 'AbortError') {
+        setError('Upload timed out. Large files may take several minutes to process. Please try again.')
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('Cannot connect to server. Please ensure the backend is running.')
+      } else {
+        setError(error.message || 'Upload failed. Please try again.')
+      }
       
       // Provide specific error messages based on the error type
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -204,14 +233,14 @@ export default function UploadPage() {
           {/* Header */}
           <div className="space-y-1">
             <h2 className="text-2xl font-bold tracking-tight">Upload Document</h2>
-            <p className="text-muted-foreground">Add new documents to your knowledge base</p>
+            <p className="text-muted-foreground">Add new documents to your knowledge base (Admin Only)</p>
           </div>
 
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Document Upload</CardTitle>
+              <CardTitle>Document Upload (Admin Only)</CardTitle>
               <CardDescription>
-                Upload PDF documents with metadata for AI processing
+                Upload PDF documents with metadata for AI processing. Only administrators can upload documents to ensure content quality and security.
                 {user?.token === 'fallback-mode' && (
                   <div className="mt-2 text-sm text-amber-600">
                     ⚠️ Running in demo mode - documents will be stored locally only
@@ -333,10 +362,20 @@ export default function UploadPage() {
                 {isUploading && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Uploading {file?.name}...</span>
+                      <span className="text-muted-foreground">
+                        {uploadProgress < 85 
+                          ? `Uploading ${file?.name}...` 
+                          : `Processing ${file?.name} (AI analysis in progress)...`
+                        }
+                      </span>
                       <span className="font-medium text-primary">{uploadProgress}%</span>
                     </div>
                     <Progress value={uploadProgress} />
+                    {uploadProgress >= 85 && (
+                      <div className="text-xs text-muted-foreground">
+                        Large files may take several minutes to process. Please wait...
+                      </div>
+                    )}
                   </div>
                 )}
 

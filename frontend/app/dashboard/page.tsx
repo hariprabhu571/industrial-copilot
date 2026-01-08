@@ -1,27 +1,108 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuthStore, useDocumentStore, useChatStore } from "@/lib/store"
+import { useAuthStore, useChatStore } from "@/lib/store"
 import { AppHeader } from "@/components/app-header"
 import { StatCard } from "@/components/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, MessageSquare, Clock, Activity, Upload, FileSearch } from "lucide-react"
+import { FileText, MessageSquare, Clock, Activity, Upload, FileSearch, Loader2, Settings } from "lucide-react"
 import Link from "next/link"
 import { hasPermission } from "@/lib/auth"
+
+interface DashboardStats {
+  totalDocuments: number
+  totalQueries: number
+  avgResponseTime: string
+  systemStatus: string
+  recentDocuments: Array<{
+    id: string
+    name: string
+    uploadedBy: string
+    uploadedAt: string
+  }>
+}
 
 export default function DashboardPage() {
   const router = useRouter()
   const { user } = useAuthStore()
-  const { documents } = useDocumentStore()
   const { getUserMessages } = useChatStore()
+  const [stats, setStats] = useState<DashboardStats>({
+    totalDocuments: 0,
+    totalQueries: 0,
+    avgResponseTime: "-",
+    systemStatus: "Loading...",
+    recentDocuments: []
+  })
+  const [loading, setLoading] = useState(true)
+
+  // Fetch dashboard statistics
+  const fetchDashboardStats = async () => {
+    if (!user?.token) return
+
+    try {
+      setLoading(true)
+      
+      // Fetch documents from API
+      const documentsResponse = await fetch('/api/documents', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      let totalDocuments = 0
+      let recentDocuments: any[] = []
+
+      if (documentsResponse.ok) {
+        const documentsData = await documentsResponse.json()
+        totalDocuments = documentsData.total || 0
+        recentDocuments = (documentsData.documents || []).slice(0, 3).map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          uploadedBy: doc.uploadedBy,
+          uploadedAt: doc.uploadedAt
+        }))
+      }
+
+      // Get user messages from local store
+      const messages = getUserMessages(user.id)
+      const userMessages = messages.filter((m) => m.role === "user")
+      const avgResponseTime = messages.length > 0 ? "1.2s" : "-"
+
+      setStats({
+        totalDocuments,
+        totalQueries: userMessages.length,
+        avgResponseTime,
+        systemStatus: "Online",
+        recentDocuments
+      })
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      // Fallback to local data
+      const messages = getUserMessages(user.id)
+      const userMessages = messages.filter((m) => m.role === "user")
+      
+      setStats({
+        totalDocuments: 0,
+        totalQueries: userMessages.length,
+        avgResponseTime: messages.length > 0 ? "1.2s" : "-",
+        systemStatus: "Online",
+        recentDocuments: []
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardStats()
+    }
+  }, [user])
 
   if (!user) return null
-
-  const messages = getUserMessages(user.id) // Get only current user's messages
-  const userMessages = messages.filter((m) => m.role === "user")
-  const avgResponseTime = messages.length > 0 ? "1.2s" : "-"
 
   return (
     <>
@@ -38,18 +119,28 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Total Documents"
-              value={documents.length}
+              value={loading ? <Loader2 className="size-4 animate-spin" /> : stats.totalDocuments}
               icon={FileText}
               description="Documents in system"
             />
             <StatCard
               title="Total Queries"
-              value={userMessages.length}
+              value={stats.totalQueries}
               icon={MessageSquare}
               description="Questions asked"
             />
-            <StatCard title="Avg Response Time" value={avgResponseTime} icon={Clock} description="System performance" />
-            <StatCard title="System Status" value="Online" icon={Activity} description="All systems operational" />
+            <StatCard 
+              title="Avg Response Time" 
+              value={stats.avgResponseTime} 
+              icon={Clock} 
+              description="System performance" 
+            />
+            <StatCard 
+              title="System Status" 
+              value={loading ? "Loading..." : stats.systemStatus} 
+              icon={Activity} 
+              description="All systems operational" 
+            />
           </div>
 
           {/* Content Grid */}
@@ -67,11 +158,17 @@ export default function DashboardPage() {
                     Start Chat
                   </Button>
                 </Link>
+                <Link href="/equipment" className="block">
+                  <Button variant="outline" className="w-full justify-start bg-transparent" size="lg">
+                    <Settings className="mr-2 size-5" />
+                    Equipment Management
+                  </Button>
+                </Link>
                 {hasPermission(user.role, "upload") && (
                   <Link href="/upload" className="block">
                     <Button variant="outline" className="w-full justify-start bg-transparent" size="lg">
                       <Upload className="mr-2 size-5" />
-                      Upload Document
+                      Upload Document (Admin)
                     </Button>
                   </Link>
                 )}
@@ -99,7 +196,12 @@ export default function DashboardPage() {
                 <CardDescription>Latest system events</CardDescription>
               </CardHeader>
               <CardContent>
-                {messages.length === 0 && documents.length === 0 ? (
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Loader2 className="size-8 animate-spin text-muted-foreground mb-4" />
+                    <p className="text-sm text-muted-foreground">Loading recent activity...</p>
+                  </div>
+                ) : stats.recentDocuments.length === 0 && stats.totalQueries === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <div className="rounded-lg bg-muted/50 p-4 ring-1 ring-border/50">
                       <Activity className="size-8 text-muted-foreground" />
@@ -111,7 +213,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {documents.slice(0, 3).map((doc) => (
+                    {stats.recentDocuments.map((doc) => (
                       <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
                         <div className="rounded bg-primary/10 p-2 ring-1 ring-primary/20">
                           <FileText className="size-4 text-primary" />
@@ -122,7 +224,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ))}
-                    {userMessages.slice(0, 2).map((msg) => (
+                    {getUserMessages(user.id).filter((m) => m.role === "user").slice(0, 2).map((msg) => (
                       <div key={msg.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
                         <div className="rounded bg-primary/10 p-2 ring-1 ring-primary/20">
                           <MessageSquare className="size-4 text-primary" />

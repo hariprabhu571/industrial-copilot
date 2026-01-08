@@ -7,6 +7,7 @@ import uploadRoute from "./routes/upload.js";
 import chatRoute from "./routes/chat.js";
 import authRoute from "./routes/auth.js";
 import equipmentRoute from "./routes/equipment.js";
+import documentsRoute from "./routes/documents.js";
 import { authenticate } from "./auth/authMiddleware.js";
 import { authorize } from "./auth/authorize.js";
 import auditRoute from "./routes/audit.js";
@@ -33,15 +34,25 @@ app.use(
 app.use(
   "/api/upload",
   authenticate,
-  authorize(["admin", "editor"]),
+  authorize(["admin"]), // Only admin can upload
   uploadRoute
 );
+
+// Legacy upload endpoint (bypasses JWT auth, uses admin key)
+app.use("/api/upload-legacy", uploadRoute);
 
 app.use(
   "/api/chat",
   authenticate,
   authorize(["admin", "editor", "viewer"]),
   chatRoute
+);
+
+app.use(
+  "/api/documents",
+  authenticate,
+  authorize(["admin", "editor", "viewer"]),
+  documentsRoute
 );
 
 app.use(
