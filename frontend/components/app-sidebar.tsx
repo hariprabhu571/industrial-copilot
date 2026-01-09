@@ -1,11 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/lib/store"
 import { hasPermission } from "@/lib/auth"
-import { LayoutDashboard, MessageSquare, FileText, Upload, FileSearch, Factory, LogOut, Users, Settings } from "lucide-react"
+import { LayoutDashboard, MessageSquare, FileText, Upload, FileSearch, Factory, LogOut, Users, Settings, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -14,6 +14,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "view" },
   { name: "Chat", href: "/chat", icon: MessageSquare, permission: "chat" },
   { name: "Equipment", href: "/equipment", icon: Settings, permission: "view" },
+  { name: "Error Codes", href: "/error-codes", icon: AlertTriangle, permission: "view" },
   { name: "Documents", href: "/documents", icon: FileText, permission: "view" },
   { name: "Upload", href: "/upload", icon: Upload, permission: "upload" },
   { name: "Users", href: "/users", icon: Users, permission: "audit" },
@@ -22,11 +23,22 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, logout } = useAuthStore()
 
   if (!user) return null
 
   const visibleNavigation = navigation.filter((item) => hasPermission(user.role, item.permission))
+
+  const handleNavigation = (href: string, name: string) => {
+    console.log('Sidebar navigation clicked:', name, href)
+    try {
+      router.push(href)
+    } catch (error) {
+      console.error('Router navigation failed, using window.location:', error)
+      window.location.href = href
+    }
+  }
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
@@ -50,11 +62,11 @@ export function AppSidebar() {
         {visibleNavigation.map((item) => {
           const isActive = pathname === item.href
           return (
-            <Link
+            <button
               key={item.name}
-              href={item.href}
+              onClick={() => handleNavigation(item.href, item.name)}
               className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full text-left",
                 isActive
                   ? "bg-gradient-to-r from-primary/20 to-primary/10 text-sidebar-accent-foreground ring-1 ring-primary/30 shadow-sm"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:scale-[1.02]",
@@ -63,7 +75,7 @@ export function AppSidebar() {
               <item.icon className={cn("size-5 transition-transform", isActive && "text-primary")} />
               {item.name}
               {isActive && <span className="ml-auto size-1.5 rounded-full bg-primary animate-pulse" />}
-            </Link>
+            </button>
           )
         })}
       </nav>

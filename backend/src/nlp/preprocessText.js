@@ -29,10 +29,14 @@ export function preprocessText(text) {
     }
     
     console.log("Using NLP script at:", scriptPath);
-    const pythonProcess = spawn("python", [scriptPath, text]);
+    const pythonProcess = spawn("python", [scriptPath]);
 
     let output = "";
     let error = "";
+
+    // Send text via stdin instead of command line argument
+    pythonProcess.stdin.write(text);
+    pythonProcess.stdin.end();
 
     pythonProcess.stdout.on("data", data => {
       output += data.toString();

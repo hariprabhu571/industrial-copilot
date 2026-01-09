@@ -37,9 +37,11 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+    <div className="flex h-screen bg-background">
+      <div className="shrink-0">
+        <AppSidebar />
+      </div>
+      <div className="flex flex-1 flex-col overflow-auto">{children}</div>
     </div>
   )
 }

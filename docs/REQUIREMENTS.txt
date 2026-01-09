@@ -272,5 +272,5 @@ npm install
 
 ---
 
-*Last Updated: January 4, 2026*
+*Last Updated: January 8, 2026*
 *For technical support, refer to SETUP_GUIDE.md*

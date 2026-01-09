@@ -18,12 +18,6 @@ const nextConfig = {
   experimental: {
     proxyTimeout: 300000, // 5 minutes
   },
-  // Increase body size limit
-  serverRuntimeConfig: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
 }
 
 export default nextConfig

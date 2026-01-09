@@ -313,10 +313,13 @@ class EnterpriseNLPProcessor:
 
 def main():
     """Main function for command line usage"""
-    if len(sys.argv) < 2:
+    # Read from stdin instead of command line arguments to avoid length limits
+    try:
+        input_text = sys.stdin.read().strip()
+    except Exception as e:
         print(json.dumps({
-            'error': 'No input text provided',
-            'usage': 'python nlp_runner.py "text to process"',
+            'error': f'Failed to read input: {str(e)}',
+            'usage': 'echo "text to process" | python nlp_runner.py',
             'capabilities': [
                 'Enterprise section detection',
                 'Advanced PII detection and masking',
@@ -328,7 +331,21 @@ def main():
         }, indent=2))
         sys.exit(1)
     
-    input_text = sys.argv[1]
+    if not input_text:
+        print(json.dumps({
+            'error': 'No input text provided via stdin',
+            'usage': 'echo "text to process" | python nlp_runner.py',
+            'capabilities': [
+                'Enterprise section detection',
+                'Advanced PII detection and masking',
+                'Document type classification',
+                'Compliance assessment',
+                'Chunk analysis with metadata',
+                'Enterprise keyword extraction'
+            ]
+        }, indent=2))
+        sys.exit(1)
+    
     processor = EnterpriseNLPProcessor()
     
     try:
